@@ -208,6 +208,86 @@ def cmd_reset(args):
         print("All metrics cleared.")
 
 
+def _uninstall_global():
+    from anzuelo.hook import detect_shell
+    shell = detect_shell()
+    rc = os.environ.get("ANZUELO_RC") or {
+        "zsh": os.environ.get("ZDOTDIR", os.path.expanduser("~/.zshrc")),
+        "bash": os.path.expanduser("~/.bashrc"),
+    }.get(shell, os.path.expanduser("~/.profile"))
+    if not os.path.exists(rc):
+        print(f"  no {rc} found")
+        return
+    with open(rc) as f:
+        content = f.read()
+    if "anzuelo" not in content:
+        print(f"  no anzuelo hooks found in {rc}")
+        return
+    lines = []
+    skip = False
+    for line in content.splitlines(True):
+        if "# anzuelo:" in line:
+            skip = True
+            continue
+        if "'anzuelo init'" in line or '"$(anzuelo init)"' in line:
+            skip = True
+            continue
+        if skip:
+            skip = False
+            continue
+        lines.append(line)
+    with open(rc, "w") as f:
+        f.writelines(lines)
+    print(f"  removed anzuelo hooks from {rc}")
+
+
+def cmd_uninstall(args):
+    from anzuelo.hook import uninstall_hooks, detect_harnesses
+    from anzuelo.store import _default_path
+
+    harness_flags = {
+        "claude": getattr(args, "claude", False),
+        "opencode": getattr(args, "opencode", False),
+        "codex": getattr(args, "codex", False),
+        "agy": getattr(args, "agy", False),
+    }
+
+    targets = []
+    if getattr(args, "all_harnesses", False):
+        targets = detect_harnesses()
+        if not targets:
+            print("  no anzuelo hooks found for any harness")
+            return
+    else:
+        for name, active in harness_flags.items():
+            if active:
+                targets.append(name)
+
+    if targets:
+        for name in targets:
+            print(f"  removing anzuelo hooks for {name}...")
+            uninstall_hooks(name)
+            print()
+        return
+
+    if getattr(args, "global_uninstall", False):
+        _uninstall_global()
+        return
+
+    if getattr(args, "data", False):
+        db_path = _default_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print(f"  removed {db_path}")
+        data_dir = os.path.dirname(db_path)
+        if os.path.isdir(data_dir) and not os.listdir(data_dir):
+            os.rmdir(data_dir)
+            print(f"  removed empty {data_dir}")
+        return
+
+    print("  specify what to uninstall: --claude, --opencode, --codex, --agy, --all, --global, or --data")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="anzuelo",
@@ -268,6 +348,25 @@ def main():
     p_reset.add_argument("--session", type=str, default=None,
                          help="Clear only a specific session")
 
+    p_uninstall = sub.add_parser("uninstall",
+                                 help="Remove anzuelo hooks and data")
+    p_uninstall.add_argument("--claude", action="store_true",
+                             help="Remove Claude Code hooks")
+    p_uninstall.add_argument("--opencode", action="store_true",
+                             help="Remove OpenCode plugin")
+    p_uninstall.add_argument("--codex", action="store_true",
+                             help="Remove Codex CLI hooks")
+    p_uninstall.add_argument("--agy", action="store_true",
+                             help="Remove Antigravity CLI hooks")
+    p_uninstall.add_argument("-g", "--global", dest="global_uninstall",
+                             action="store_true",
+                             help="Remove shell rc file hooks")
+    p_uninstall.add_argument("--all", dest="all_harnesses",
+                             action="store_true",
+                             help="Remove hooks from all detected harnesses")
+    p_uninstall.add_argument("--data", action="store_true",
+                             help="Remove metrics database")
+
     args = parser.parse_args()
 
     if args.version:
@@ -289,5 +388,7 @@ def main():
         cmd_status(args)
     elif args.command == "reset":
         cmd_reset(args)
+    elif args.command == "uninstall":
+        cmd_uninstall(args)
     else:
         parser.print_help()

@@ -52,6 +52,17 @@ If the hook uses stdin/stdout JSON protocol (most do), reuse `_HOOK_SCRIPT` via 
 
 **When changing conventions (arg order, protocol, schema):** update the "Critical Conventions" and "The Hook Script Protocol" sections in this file so all agents stay consistent.
 
+### Uninstalling a Harness
+
+Each `install_<name>_hooks()` has a matching `uninstall_<name>_hooks()` in `hook.py`. They reverse the install:
+
+1. **`_remove_hooks_from_json()`** — strips our hook entries from the config file, removes the file if emptied
+2. **`uninstall_<name>_hooks()`** — removes hook script + plugin files + config entries
+
+Add the uninstaller to `_HARNESS_UNINSTALLERS` dict and wire up via `cli.py` (the `--<name>` flag on `anzuelo uninstall`).
+
+`anzuelo uninstall` also supports `--global` (shell rc cleanup) and `--data` (database removal).
+
 ## The Hook Script Protocol
 
 The universal `_HOOK_SCRIPT` (`anzuelo-hook.sh`) handles `PreToolUse` and `PostToolUse` events:

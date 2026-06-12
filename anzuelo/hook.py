@@ -229,6 +229,42 @@ def _add_hooks_to_json(path, events, hook_path, config_key="hooks"):
     with open(path, "w") as f:
         _json.dump(cfg, f, indent=2)
         f.write("\n")
+    label = os.path.basename(os.path.dirname(path)) or "config"
+    print(f"  added anzuelo hooks to {path}")
+
+
+def _remove_hooks_from_json(path, events, hook_path, config_key="hooks"):
+    import json as _json
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        cfg = _json.load(f)
+    if config_key not in cfg:
+        return
+    changed = False
+    for event in events:
+        existing = cfg[config_key].get(event, [])
+        filtered = [
+            g for g in existing
+            if not any(h.get("command") == hook_path for h in g.get("hooks", []))
+        ]
+        if len(filtered) != len(existing):
+            changed = True
+            if filtered:
+                cfg[config_key][event] = filtered
+            elif event in cfg[config_key]:
+                del cfg[config_key][event]
+    if not changed:
+        return
+    if not cfg[config_key]:
+        del cfg[config_key]
+    if not cfg:
+        os.remove(path)
+        print(f"  removed {path}")
+    else:
+        with open(path, "w") as f:
+            _json.dump(cfg, f, indent=2)
+            f.write("\n")
 
 
 # ── Harness installers ───────────────────────────────────────────────
@@ -238,8 +274,6 @@ def install_claude_hooks():
     _write_hook_script(hook_path)
     print(f"  created {hook_path}")
     _add_hooks_to_json(CLAUDE_SETTINGS_PATH, ("PreToolUse", "PostToolUse"), hook_path)
-    print(f"  added anzuelo to Claude Code PreToolUse/PostToolUse hooks")
-    print(f"  updated {CLAUDE_SETTINGS_PATH}")
 
 
 def install_opencode_hooks():
@@ -292,16 +326,53 @@ def install_agy_hooks():
     _write_hook_script(hook_path)
     print(f"  created {hook_path}")
 
-    # Antigravity CLI uses ~/.gemini/config/hooks.json with PreToolUse/PostToolUse
     _add_hooks_to_json(AGY_HOOKS_CONFIG, ("PreToolUse", "PostToolUse"), hook_path)
-    print(f"  added anzuelo to Antigravity CLI (agy) PreToolUse/PostToolUse hooks")
-    print(f"  updated {AGY_HOOKS_CONFIG}")
 
-    # Also add to Gemini CLI (legacy) settings.json if it exists, with BeforeTool/AfterTool
     if os.path.exists(GEMINI_SETTINGS_PATH):
         _add_hooks_to_json(GEMINI_SETTINGS_PATH, ("BeforeTool", "AfterTool"), hook_path)
-        print(f"  added anzuelo to Gemini CLI (legacy) BeforeTool/AfterTool hooks")
-        print(f"  updated {GEMINI_SETTINGS_PATH}")
+
+
+# ── Uninstallers ─────────────────────────────────────────────────────
+
+def uninstall_claude_hooks():
+    hook_path = os.path.join(CLAUDE_HOOK_DIR, "anzuelo-hook.sh")
+    _remove_hooks_from_json(CLAUDE_SETTINGS_PATH, ("PreToolUse", "PostToolUse"), hook_path)
+    if os.path.exists(hook_path):
+        os.remove(hook_path)
+        print(f"  removed {hook_path}")
+
+
+def uninstall_opencode_hooks():
+    plugin_path = os.path.join(OPENCODE_PLUGIN_DIR, "anzuelo.js")
+    if os.path.exists(plugin_path):
+        os.remove(plugin_path)
+        print(f"  removed {plugin_path}")
+
+
+def uninstall_codex_hooks():
+    hook_path = os.path.join(CODEX_HOOKS_DIR, "anzuelo-hook.sh")
+    if os.path.exists(hook_path):
+        os.remove(hook_path)
+        print(f"  removed {hook_path}")
+    plugin_dir = os.path.join(CODEX_PLUGIN_DIR, "anzuelo")
+    if os.path.exists(plugin_dir):
+        import shutil
+        shutil.rmtree(plugin_dir)
+        print(f"  removed {plugin_dir}")
+
+
+def uninstall_agy_hooks():
+    hook_path = os.path.join(AGY_HOOKS_DIR, "anzuelo-hook.sh")
+    _remove_hooks_from_json(AGY_HOOKS_CONFIG, ("PreToolUse", "PostToolUse"), hook_path)
+    if os.path.exists(GEMINI_SETTINGS_PATH):
+        _remove_hooks_from_json(GEMINI_SETTINGS_PATH, ("BeforeTool", "AfterTool"), hook_path)
+    if os.path.exists(hook_path):
+        os.remove(hook_path)
+        print(f"  removed {hook_path}")
+    hooks_dir = AGY_HOOKS_DIR
+    if os.path.isdir(hooks_dir) and not os.listdir(hooks_dir):
+        os.rmdir(hooks_dir)
+        print(f"  removed empty {hooks_dir}")
 
 
 _HARNESSES = {
@@ -316,6 +387,13 @@ _HARNESS_INSTALLERS = {
     "opencode": install_opencode_hooks,
     "codex": install_codex_hooks,
     "agy": install_agy_hooks,
+}
+
+_HARNESS_UNINSTALLERS = {
+    "claude": uninstall_claude_hooks,
+    "opencode": uninstall_opencode_hooks,
+    "codex": uninstall_codex_hooks,
+    "agy": uninstall_agy_hooks,
 }
 
 
@@ -334,6 +412,15 @@ def install_hooks(harness_name):
     else:
         print(f"  unknown harness: {harness_name}")
         print(f"  available: {', '.join(_HARNESS_INSTALLERS)}")
+
+
+def uninstall_hooks(harness_name):
+    uninstaller = _HARNESS_UNINSTALLERS.get(harness_name)
+    if uninstaller:
+        uninstaller()
+    else:
+        print(f"  unknown harness: {harness_name}")
+        print(f"  available: {', '.join(_HARNESS_UNINSTALLERS)}")
 
 
 # ── Run wrapper ──────────────────────────────────────────────────────

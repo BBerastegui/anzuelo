@@ -167,6 +167,12 @@ main() {
   echo "    3. anzuelo run -- <command>"
   echo "    4. anzuelo report"
   echo ""
+  info "To uninstall:"
+  echo "    1. anzuelo uninstall --all    (remove harness hooks)"
+  echo "    2. anzuelo uninstall --global (remove shell hooks)"
+  echo "    3. anzuelo uninstall --data   (remove metrics database)"
+  echo "    4. pip uninstall anzuelo"
+  echo ""
 }
 
 main
