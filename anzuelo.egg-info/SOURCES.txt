@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 anzuelo/__init__.py
 anzuelo/__main__.py

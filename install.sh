@@ -68,9 +68,9 @@ install_from_source() {
   info "Installing from source..."
   local srcdir="$1"
   if command -v pip3 >/dev/null 2>&1; then
-    pip3 install --user -e "$srcdir"
+    pip3 install --user "$srcdir"
   elif command -v pip >/dev/null 2>&1; then
-    pip install --user -e "$srcdir"
+    pip install --user "$srcdir"
   else
     error "pip not found. Install Python 3 from https://python.org"
   fi
