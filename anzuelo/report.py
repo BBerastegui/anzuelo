@@ -116,6 +116,17 @@ def _detected_companions():
     return get_companion_info()
 
 
+_COMPANION_PREFIXES = None
+
+
+def _companion_prefixes():
+    global _COMPANION_PREFIXES
+    if _COMPANION_PREFIXES is None:
+        from anzuelo.hook import detect_companion_tools
+        _COMPANION_PREFIXES = set(detect_companion_tools())
+    return _COMPANION_PREFIXES
+
+
 def _print_header(w, session_id=None):
     companions = _detected_companions()
     title = " anzuelo  metrics "
@@ -220,6 +231,7 @@ def _print_commands(s, inner):
 
     bar_w = min(inner - 30, 20)
     max_count = max(c["count"] for c in cmds) if cmds else 1
+    companions = _companion_prefixes()
 
     print(f"  {BOLD}Top Commands{RESET}")
     print(f"  {DIM}{'─' * inner}{RESET}")
@@ -228,8 +240,19 @@ def _print_commands(s, inner):
         name = c["name"]
         cnt = c["count"]
         pct = cnt / max_count * 100 if max_count else 0
-        bar = _color_bar(cnt, max_count, bar_w, BRIGHT_GREEN)
-        print(f"  {GREEN}{name:<14}{RESET} {bar}  {BOLD}{cnt}x{RESET}"
+
+        prefix = next((p for p in companions if name.startswith(p + " ")), None)
+        if prefix:
+            display = f"\U0001fa9d {name[len(prefix)+1:]}"
+            color = ORANGE
+            bar_color = ORANGE
+        else:
+            display = name
+            color = GREEN
+            bar_color = BRIGHT_GREEN
+
+        bar = _color_bar(cnt, max_count, bar_w, bar_color)
+        print(f"  {color}{display:<14}{RESET} {bar}  {BOLD}{cnt}x{RESET}"
               f"  {DIM}{pct:3.0f}%{RESET}")
     print()
 

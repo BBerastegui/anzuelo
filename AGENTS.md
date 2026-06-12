@@ -45,6 +45,8 @@ New entries get the two-word name automatically. Existing entries are migrated b
 
 The report header shows companion tools in orange: `anzuelo metrics (RTK enabled)`. `anzuelo status` also shows them.
 
+In `report.py`, companion-routed commands get the 🪝 emoji + orange color instead of green, and only the clean subcommand name is shown (e.g., `🪝 curl` instead of `rtk curl`). The bar is also orange. This makes it immediately obvious which commands were intercepted by a companion.
+
 ### Adding a New Harness
 
 Touch exactly **4 places**:
