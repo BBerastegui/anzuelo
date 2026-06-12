@@ -91,6 +91,29 @@ def _migrate_companion_commands(conn):
                             "UPDATE events SET name=? WHERE id=?",
                             (new_name, r["id"])
                         )
+    _migrate_hash_comments(conn)
+
+
+def _migrate_hash_comments(conn):
+    """Rename entries where first word is '#' to the actual command word."""
+    rows = conn.execute(
+        "SELECT id, name, detail FROM events WHERE type='cmd' AND name='#'"
+    ).fetchall()
+    for r in rows:
+        if r["detail"]:
+            parts = r["detail"].split()
+            new_name = None
+            for p in parts:
+                if not p.startswith("#"):
+                    new_name = p
+                    break
+            if new_name is None:
+                new_name = parts[0]
+            if new_name != r["name"]:
+                conn.execute(
+                    "UPDATE events SET name=? WHERE id=?",
+                    (new_name, r["id"])
+                )
 
 
 def _now():

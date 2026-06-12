@@ -90,6 +90,7 @@ The universal `_HOOK_SCRIPT` (`anzuelo-hook.sh`) handles `PreToolUse` and `PostT
 ## Critical Conventions
 
 - **PostToolUse dedup**: Summary queries filter `WHERE type='cmd' AND output_size IS NOT NULL` to count only PostToolUse events (PreToolUse has NULL output_size)
+- **Comment skipping**: `_first_word()` in `tracker.py` skips leading `#` comments when extracting the command name from a multi-line bash command
 - **Event types**: `type='cmd'` for Bash (name from first word), `type='tool'` for all others (name is tool name like Read/Write/Glob)
 - **Arg order for `anzuelo log`**: positional args (`exit_code`, `duration_ms`) must come BEFORE optional args (`--session-id`, `--output-size`). Argparse with `nargs="?"` stops consuming positionals after seeing an optional.
 - **Bash in PostToolUse**: uses `tool_response.stdout`, NOT `tool_result` (that key is never present)

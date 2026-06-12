@@ -11,6 +11,16 @@ def _get_store():
     return _store
 
 
+def _first_word(cmd):
+    """Extract the first real command word, skipping leading comments."""
+    if not cmd:
+        return cmd
+    for part in cmd.split():
+        if not part.startswith("#"):
+            return part
+    return cmd.split()[0]
+
+
 def _companion_name(cmd):
     """If cmd starts with a known companion tool prefix, use first two words."""
     from anzuelo.hook import detect_companion_tools
@@ -20,7 +30,7 @@ def _companion_name(cmd):
         first = parts[0]
         if first in tools and len(parts) > 1:
             return f"{first} {parts[1]}"
-    return cmd.split()[0] if cmd else cmd
+    return _first_word(cmd) or cmd
 
 
 def log_command(cmd, exit_code=None, duration_ms=None, output_size=None, session_id=None):
