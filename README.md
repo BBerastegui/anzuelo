@@ -22,7 +22,7 @@
 ## 🚀 One-liner
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/master/install.sh | sh
 ```
 
 That's it. Install, hook into every AI coding harness you use, and start collecting metrics.
@@ -93,7 +93,7 @@ Timeline
 
 ### One-liner (recommended)
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/master/install.sh | sh
 ```
 Auto-detects OS, architecture, and all installed AI coding harnesses.
 

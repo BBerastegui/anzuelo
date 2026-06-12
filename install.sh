@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # anzuelo installer - https://github.com/bberastegui/anzuelo
-# Usage: curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/bberastegui/anzuelo/master/install.sh | sh
 
 set -e
 
