@@ -1,0 +1,14 @@
+pyproject.toml
+anzuelo/__init__.py
+anzuelo/__main__.py
+anzuelo/cli.py
+anzuelo/hook.py
+anzuelo/monitor.py
+anzuelo/report.py
+anzuelo/store.py
+anzuelo/tracker.py
+anzuelo.egg-info/PKG-INFO
+anzuelo.egg-info/SOURCES.txt
+anzuelo.egg-info/dependency_links.txt
+anzuelo.egg-info/entry_points.txt
+anzuelo.egg-info/top_level.txt

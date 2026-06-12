@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: anzuelo
+Version: 0.1.0
+Summary: Harness-agnostic lightweight metrics and monitoring for AI coding assistants
+Author: Anzuelo Contributors
+License: MIT
+Requires-Python: >=3.7

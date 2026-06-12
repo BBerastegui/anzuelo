@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anzuelo"
+version = "0.1.0"
+description = "Harness-agnostic lightweight metrics and monitoring for AI coding assistants"
+license = { text = "MIT" }
+authors = [{ name = "Anzuelo Contributors" }]
+requires-python = ">=3.7"
+
+[project.scripts]
+anzuelo = "anzuelo.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["anzuelo*"]
