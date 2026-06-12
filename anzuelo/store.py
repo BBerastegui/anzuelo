@@ -69,6 +69,28 @@ def _migrate(conn):
     existing = [r["name"] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
     if "output_size" not in existing:
         conn.execute("ALTER TABLE events ADD COLUMN output_size INTEGER")
+    _migrate_companion_commands(conn)
+
+
+def _migrate_companion_commands(conn):
+    """Rename existing companion tool entries (e.g. 'rtk grep foo' -> 'rtk grep')."""
+    from anzuelo.hook import detect_companion_tools
+    tools = detect_companion_tools()
+    for tool in tools:
+        rows = conn.execute(
+            "SELECT id, name, detail FROM events WHERE type='cmd' AND name=?",
+            (tool,)
+        ).fetchall()
+        for r in rows:
+            if r["detail"] and r["detail"].startswith(tool + " "):
+                parts = r["detail"].split()
+                if len(parts) > 1:
+                    new_name = f"{parts[0]} {parts[1]}"
+                    if new_name != r["name"]:
+                        conn.execute(
+                            "UPDATE events SET name=? WHERE id=?",
+                            (new_name, r["id"])
+                        )
 
 
 def _now():

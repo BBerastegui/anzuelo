@@ -11,8 +11,20 @@ def _get_store():
     return _store
 
 
+def _companion_name(cmd):
+    """If cmd starts with a known companion tool prefix, use first two words."""
+    from anzuelo.hook import detect_companion_tools
+    tools = detect_companion_tools()
+    if tools and cmd:
+        parts = cmd.split()
+        first = parts[0]
+        if first in tools and len(parts) > 1:
+            return f"{first} {parts[1]}"
+    return cmd.split()[0] if cmd else cmd
+
+
 def log_command(cmd, exit_code=None, duration_ms=None, output_size=None, session_id=None):
-    name = cmd.split()[0] if cmd else cmd
+    name = _companion_name(cmd)
     return _get_store().log_event(
         type="cmd", name=name, detail=cmd,
         exit_code=exit_code, duration_ms=duration_ms,

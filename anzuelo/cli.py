@@ -175,10 +175,15 @@ def _report_live(session_id=None):
 
 
 def cmd_status(args):
+    from anzuelo.hook import get_companion_info
+    companions = get_companion_info()
     active = os.environ.get("ANZUELO_ACTIVE")
     if active:
         print("anzuelo is ACTIVE")
         print(f"  ANZUELO_ACTIVE={active}")
+        if companions:
+            labels = ", ".join(label for _, label in companions)
+            print(f"  companion tools: {labels}")
         from anzuelo.store import _default_path
         db_path = _default_path()
         if os.path.exists(db_path):
@@ -186,6 +191,9 @@ def cmd_status(args):
             print(f"  database: {db_path} ({size} bytes)")
     else:
         print("anzuelo is NOT active")
+        if companions:
+            labels = ", ".join(label for _, label in companions)
+            print(f"  companion tools detected: {labels}")
         print("  Run: eval \"$(anzuelo init)\"")
         print("  Or run: anzuelo run -- <command>")
 

@@ -16,6 +16,7 @@ MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 WHITE = "\033[37m"
 GRAY = "\033[90m"
+ORANGE = "\033[38;5;208m"
 
 BRIGHT_RED = "\033[91m"
 BRIGHT_GREEN = "\033[92m"
@@ -110,11 +111,20 @@ def print_report(summary, events, session_id=None):
     _print_footer(w)
 
 
+def _detected_companions():
+    from anzuelo.hook import get_companion_info
+    return get_companion_info()
+
+
 def _print_header(w, session_id=None):
+    companions = _detected_companions()
     title = " anzuelo  metrics "
     if session_id:
         short = session_id[:8]
         title = f" anzuelo  session {short} "
+    if companions:
+        labels = [f"{ORANGE}{label}{RESET}" for _, label in companions]
+        title += f"({', '.join(labels)} {ORANGE}enabled{RESET})"
     bar = "─" * (w - 2)
     print(f"  {BOLD}{BRIGHT_CYAN}╭{bar}╮{RESET}")
     pad = (w - len(title) - 2) // 2

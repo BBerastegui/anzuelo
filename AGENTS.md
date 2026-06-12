@@ -35,6 +35,16 @@ Each harness gets hooks installed by `anzuelo init --<name>`:
 | `codex` | Codex CLI | Plugin manifest + stdin/stdout JSON | `preToolUse`/`postToolUse` | `~/.codex/` exists |
 | `agy` | Antigravity CLI | stdin/stdout JSON, also Gemini legacy | `PreToolUse`/`PostToolUse` + `BeforeTool`/`AfterTool` | `~/.gemini/` exists |
 
+### Companion Tool Detection
+
+anzuelo detects "companion tools" (like RTK) that hook into the same harness and rewrites command names so you see what the companion actually *did*, not just that it was called.
+
+The `_COMPANION_TOOLS` dict in `hook.py` maps tool name → `{label, check}`. `detect_companion_tools()` returns active tools. `tracker.py::_companion_name()` uses the first two words (`"rtk grep"`) instead of just the first word (`"rtk"`) for command grouping.
+
+New entries get the two-word name automatically. Existing entries are migrated by `_migrate_companion_commands()` in `store.py`.
+
+The report header shows companion tools in orange: `anzuelo metrics (RTK enabled)`. `anzuelo status` also shows them.
+
 ### Adding a New Harness
 
 Touch exactly **4 places**:

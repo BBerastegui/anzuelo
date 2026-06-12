@@ -267,6 +267,32 @@ def _remove_hooks_from_json(path, events, hook_path, config_key="hooks"):
             f.write("\n")
 
 
+# ── Companion tools ──────────────────────────────────────────────────
+
+_COMPANION_TOOLS = {
+    "rtk": {
+        "label": "RTK",
+        "check": lambda: (
+            os.path.exists(os.path.expanduser("~/.claude/hooks/rtk-rewrite.sh"))
+            or os.path.exists(os.path.expanduser("~/.claude/hooks/.rtk-hook.sha256"))
+        ),
+    },
+}
+
+
+def detect_companion_tools():
+    found = []
+    for name, info in _COMPANION_TOOLS.items():
+        if info["check"]():
+            found.append(name)
+    return found
+
+
+def get_companion_info():
+    tools = detect_companion_tools()
+    return [(name, _COMPANION_TOOLS[name]["label"]) for name in tools]
+
+
 # ── Harness installers ───────────────────────────────────────────────
 
 def install_claude_hooks():
