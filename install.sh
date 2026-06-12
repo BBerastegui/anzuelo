@@ -115,7 +115,7 @@ main() {
     error "Python 3 is required. Install from https://python.org"
   fi
 
-  # Try installing from local source, PyPI, or GitHub
+  # Try installing from local source, GitHub master, or PyPI
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd 2>/dev/null || echo "")"
 
   if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
@@ -131,8 +131,18 @@ main() {
   elif command -v anzuelo >/dev/null 2>&1; then
     info "anzuelo already installed: $(anzuelo --version 2>/dev/null || echo 'present')"
   else
+    # Try PyPI first, fall back to master branch tarball
     pip_pkg="${ANZUELO_PIP_PKG:-anzuelo}"
-    install_via_pip "$pip_pkg" || error "pip install failed. Try: pip install anzuelo"
+    if ! install_via_pip "$pip_pkg" 2>/dev/null; then
+      info "PyPI not available yet, installing from GitHub master..."
+      TMP="$(mktemp -d)"
+      URL="https://github.com/${REPO}/archive/master.tar.gz"
+      info "Downloading from $URL"
+      curl -fsSL "$URL" -o "$TMP/release.tar.gz"
+      tar -xzf "$TMP/release.tar.gz" -C "$TMP"
+      install_from_source "$TMP"/*/
+      rm -rf "$TMP"
+    fi
   fi
 
   # Verify
