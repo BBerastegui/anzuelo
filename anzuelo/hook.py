@@ -269,28 +269,91 @@ def _remove_hooks_from_json(path, events, hook_path, config_key="hooks"):
 
 # ── Companion tools ──────────────────────────────────────────────────
 
-_COMPANION_TOOLS = {
-    "rtk": {
-        "label": "RTK",
-        "check": lambda: (
-            os.path.exists(os.path.expanduser("~/.claude/hooks/rtk-rewrite.sh"))
-            or os.path.exists(os.path.expanduser("~/.claude/hooks/.rtk-hook.sha256"))
-        ),
-    },
-}
+_ANZUELO_HOOK_SCRIPTS = {"anzuelo-hook.sh"}
+
+
+def _derive_companion_name(filename):
+    """Derive companion tool name from a hook script filename.
+    rtk-rewrite.sh -> (rtk, RTK)
+    headroom-hook.sh -> (headroom, Headroom)
+    my-tool-hook.sh -> (my-tool, My-Tool)
+    """
+    name = filename.rsplit(".", 1)[0]  # strip .sh / .sha256
+    for suffix in ["-rewrite", "-hook"]:
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    if len(name) <= 4:
+        label = name.upper()
+    else:
+        label = name[0].upper() + name[1:]
+    return name, label
+
+
+def _is_anzuelo_file(fname):
+    """Check if a filename belongs to anzuelo (any variant)."""
+    return fname.startswith("anzuelo") or fname in _ANZUELO_HOOK_SCRIPTS
+
+
+def _scan_claude_hooks():
+    """Auto-detect companion tools by scanning ~/.claude/hooks/ for
+    any registered hook scripts that aren't anzuelo's."""
+    tools = {}
+    hook_dir = os.path.expanduser("~/.claude/hooks")
+    if not os.path.isdir(hook_dir):
+        return tools
+    for f in os.listdir(hook_dir):
+        if _is_anzuelo_file(f):
+            continue
+        fpath = os.path.join(hook_dir, f)
+        if os.path.isfile(fpath) and os.access(fpath, os.X_OK):
+            name, label = _derive_companion_name(f)
+            if name:
+                tools[name] = {"label": label, "hook_file": fpath}
+    return tools
+
+
+def _scan_settings_json():
+    """Scan ~/.claude/settings.json for hooks not registered by anzuelo."""
+    tools = {}
+    path = os.path.expanduser("~/.claude/settings.json")
+    if not os.path.exists(path):
+        return tools
+    try:
+        import json as _json
+        with open(path) as f:
+            cfg = _json.load(f)
+    except Exception:
+        return tools
+    hooks_cfg = cfg.get("hooks", {})
+    for event, groups in hooks_cfg.items():
+        for g in groups:
+            for h in g.get("hooks", []):
+                cmd = h.get("command", "")
+                if cmd and not _is_anzuelo_file(os.path.basename(cmd)) \
+                       and "anzuelo" not in cmd:
+                    fname = os.path.basename(cmd)
+                    name, label = _derive_companion_name(fname)
+                    if name and name not in tools:
+                        tools[name] = {"label": label, "hook_file": cmd}
+    return tools
+
+
+def _scan_harness_companions():
+    """Aggregate companion tools from all scan sources."""
+    tools = {}
+    for scanner in (_scan_claude_hooks, _scan_settings_json):
+        tools.update(scanner())
+    return tools
 
 
 def detect_companion_tools():
-    found = []
-    for name, info in _COMPANION_TOOLS.items():
-        if info["check"]():
-            found.append(name)
-    return found
+    return list(_scan_harness_companions().keys())
 
 
 def get_companion_info():
-    tools = detect_companion_tools()
-    return [(name, _COMPANION_TOOLS[name]["label"]) for name in tools]
+    tools = _scan_harness_companions()
+    return [(name, info["label"]) for name, info in tools.items()]
 
 
 # ── Harness installers ───────────────────────────────────────────────
@@ -366,6 +429,12 @@ def uninstall_claude_hooks():
     if os.path.exists(hook_path):
         os.remove(hook_path)
         print(f"  removed {hook_path}")
+    for f in os.listdir(CLAUDE_HOOK_DIR):
+        if f.startswith("anzuelo-hook.sh") and f != "anzuelo-hook.sh":
+            fpath = os.path.join(CLAUDE_HOOK_DIR, f)
+            if os.path.isfile(fpath):
+                os.remove(fpath)
+                print(f"  removed {fpath}")
 
 
 def uninstall_opencode_hooks():
