@@ -243,7 +243,7 @@ def _print_commands(s, inner):
 
         prefix = next((p for p in companions if name.startswith(p + " ")), None)
         if prefix:
-            display = f"\U0001fa9d {name[len(prefix)+1:]}"
+            display = f"{name[len(prefix)+1:]} \U0001fa9d"
             color = ORANGE
             bar_color = ORANGE
         else:
