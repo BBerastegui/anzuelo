@@ -33,12 +33,15 @@ def _companion_name(cmd):
     return _first_word(cmd) or cmd
 
 
-def log_command(cmd, exit_code=None, duration_ms=None, output_size=None, session_id=None):
+def log_command(cmd, exit_code=None, duration_ms=None, output_size=None,
+                tokens_input=None, tokens_output=None, session_id=None):
     name = _companion_name(cmd)
     return _get_store().log_event(
         type="cmd", name=name, detail=cmd,
         exit_code=exit_code, duration_ms=duration_ms,
-        output_size=output_size, session_id=session_id,
+        output_size=output_size,
+        tokens_input=tokens_input, tokens_output=tokens_output,
+        session_id=session_id,
     )
 
 
@@ -50,10 +53,12 @@ def log_api_call(model, tokens_input=None, tokens_output=None, endpoint="", sess
     )
 
 
-def log_tool_call(tool_name, detail="", exit_code=None, output_size=None, session_id=None):
+def log_tool_call(tool_name, detail="", exit_code=None, output_size=None,
+                  tokens_input=None, tokens_output=None, session_id=None):
     return _get_store().log_event(
         type="tool", name=tool_name, detail=detail,
         exit_code=exit_code, output_size=output_size,
+        tokens_input=tokens_input, tokens_output=tokens_output,
         session_id=session_id,
     )
 

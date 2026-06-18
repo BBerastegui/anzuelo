@@ -193,7 +193,7 @@ class Store:
         ).fetchone()[0]
 
         api_count = conn.execute(
-            f"SELECT COUNT(*) FROM events WHERE type='api'{cond}",
+            f"SELECT COUNT(*) FROM events WHERE type='api'{cond and ' AND session_id=?' or ''}",
             params if session_id else []
         ).fetchone()[0]
 
@@ -215,7 +215,10 @@ class Store:
         where_cmd = f"WHERE type='cmd' AND output_size IS NOT NULL{cond and ' AND session_id=?' or ''}"
         top_cmds = [
             dict(r) for r in conn.execute(
-                f"SELECT name, COUNT(*) as count FROM events {where_cmd} GROUP BY name ORDER BY count DESC LIMIT 10",
+                f"SELECT name, COUNT(*) as count, "
+                "COALESCE(SUM(tokens_input),0) as tokens_input, "
+                "COALESCE(SUM(tokens_output),0) as tokens_output "
+                f"FROM events {where_cmd} GROUP BY name ORDER BY count DESC LIMIT 10",
                 params if session_id else []
             ).fetchall()
         ]

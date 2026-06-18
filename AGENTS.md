@@ -87,6 +87,18 @@ The universal `_HOOK_SCRIPT` (`anzuelo-hook.sh`) handles `PreToolUse` and `PostT
 - **PostToolUse**: logs same + exit_code=0, duration_ms, output_size (from `tool_response.stdout` or `tool_response.file.content`)
 - Calls `anzuelo log ...` with positional args **before** optional args (argparse `nargs="?"` bug workaround)
 
+## Token Tracking Convention
+
+Token consumption is tracked **opt-in via environment variables** — no HTTP interception:
+
+- **`ANZUELO_TOKENS_INPUT`** — set by companion tools (RTK, etc.) before PostToolUse fires
+- **`ANZUELO_TOKENS_OUTPUT`** — same, set by tools to report their own token usage
+- The hook script reads these with `os.environ.pop()` (consumed once) and passes them as `--tokens-input`/`--tokens-output` to `anzuelo log`
+- Companions know their own token consumption internally from API responses; they export the env vars so anzuelo can log them
+- The report shows per-command token totals in the `Top Commands` section
+
+This replaces the old `monitor.py` HTTP monkey-patching approach.
+
 ## Critical Conventions
 
 - **PostToolUse dedup**: Summary queries filter `WHERE type='cmd' AND output_size IS NOT NULL` to count only PostToolUse events (PreToolUse has NULL output_size)

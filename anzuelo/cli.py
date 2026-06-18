@@ -80,10 +80,17 @@ def _init_global(args):
 def cmd_log(args):
     from anzuelo.tracker import log_command, log_api_call, log_tool_call
     sid = args.session_id
+    if args.tokens_input is None:
+        args.tokens_input = int(os.environ.pop("ANZUELO_TOKENS_INPUT", "0")) or None
+    if args.tokens_output is None:
+        args.tokens_output = int(os.environ.pop("ANZUELO_TOKENS_OUTPUT", "0")) or None
     if args.type == "cmd":
         full_cmd = args.detail or args.name
         log_command(full_cmd, args.exit_code, args.duration_ms,
-                    output_size=args.output_size, session_id=sid)
+                    output_size=args.output_size,
+                    tokens_input=args.tokens_input,
+                    tokens_output=args.tokens_output,
+                    session_id=sid)
     elif args.type == "api":
         log_api_call(
             args.detail or args.name,
@@ -96,7 +103,10 @@ def cmd_log(args):
             args.name,
             detail=args.detail or "",
             exit_code=args.exit_code,
-            output_size=args.output_size, session_id=sid,
+            output_size=args.output_size,
+            tokens_input=args.tokens_input,
+            tokens_output=args.tokens_output,
+            session_id=sid,
         )
 
 
@@ -111,25 +121,7 @@ def cmd_run(args):
 
     os.environ["ANZUELO_ACTIVE"] = "1"
     start = time.time()
-
-    if cmd in ("python", "python3") and rest:
-        sys.argv = ["anzuelo run", *rest]
-        from anzuelo.monitor import install_hooks
-        install_hooks()
-        import runpy
-        target = rest[0]
-        sys.argv = rest
-        try:
-            runpy.run_path(target, run_name="__main__")
-            exit_code = 0
-        except SystemExit as e:
-            exit_code = e.code or 0
-        except BaseException:
-            import traceback
-            traceback.print_exc()
-            exit_code = 1
-    else:
-        exit_code = subprocess.call([cmd, *rest])
+    exit_code = subprocess.call([cmd, *rest])
 
     elapsed = int((time.time() - start) * 1000)
     _log_run(cmd_args, exit_code, elapsed)

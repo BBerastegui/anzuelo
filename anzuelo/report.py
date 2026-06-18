@@ -240,6 +240,7 @@ def _print_commands(s, inner):
         name = c["name"]
         cnt = c["count"]
         pct = cnt / max_count * 100 if max_count else 0
+        tok = (c.get("tokens_input", 0) or 0) + (c.get("tokens_output", 0) or 0)
 
         prefix = next((p for p in companions if name.startswith(p + " ")), None)
         if prefix:
@@ -252,8 +253,10 @@ def _print_commands(s, inner):
             bar_color = BRIGHT_GREEN
 
         bar = _color_bar(cnt, max_count, bar_w, bar_color)
-        print(f"  {color}{display:<14}{RESET} {bar}  {BOLD}{cnt}x{RESET}"
-              f"  {DIM}{pct:3.0f}%{RESET}")
+        tok_str = _fmt_tokens(tok) if tok else ""
+        print(f"  {color}{display:<14}{RESET} {bar}  {BOLD}{cnt:>3}x{RESET}"
+              f"  {DIM}{pct:3.0f}%{RESET}"
+              f"  {DIM}{tok_str:>7}{RESET}")
     print()
 
 

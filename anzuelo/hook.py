@@ -85,7 +85,7 @@ set -euo pipefail
 INPUT=$(cat)
 
 python3 - "$INPUT" <<'PYEOF'
-import json, subprocess, sys
+import json, os, subprocess, sys
 
 try:
     d = json.loads(sys.argv[1])
@@ -123,6 +123,12 @@ try:
                str(ec), str(duration), "--output-size", str(len(output))]
         if session_id:
             cmd.extend(["--session-id", session_id])
+        tin = os.environ.pop("ANZUELO_TOKENS_INPUT", "")
+        tout = os.environ.pop("ANZUELO_TOKENS_OUTPUT", "")
+        if tin:
+            cmd.extend(["--tokens-input", tin])
+        if tout:
+            cmd.extend(["--tokens-output", tout])
         subprocess.run(cmd, capture_output=True, timeout=5)
     elif event_name == "PreToolUse":
         base = ["anzuelo", "log", etype, tool_name, detail[:500]]
