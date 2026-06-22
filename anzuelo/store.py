@@ -137,6 +137,21 @@ class Store:
                     (session_id, _now(), harness),
                 )
 
+    def end_session(self, session_id):
+        conn = self._conn()
+        with conn:
+            conn.execute(
+                "UPDATE sessions SET end_time=? WHERE id=? AND end_time IS NULL",
+                (_now(), session_id),
+            )
+
+    def find_last_active_session(self):
+        conn = self._conn()
+        rows = conn.execute(
+            "SELECT id FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1"
+        ).fetchall()
+        return rows[0]["id"] if rows else None
+
     def log_event(self, type, name, detail=None, exit_code=None,
                   duration_ms=None, tokens_input=None, tokens_output=None,
                   output_size=None, model=None, tool=None,

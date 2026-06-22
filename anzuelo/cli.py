@@ -190,6 +190,19 @@ def cmd_status(args):
         print("  Or run: anzuelo run -- <command>")
 
 
+def cmd_finish(args):
+    from anzuelo.tracker import finish_session, get_events
+    result = finish_session(session_id=args.session)
+    if not result:
+        print("  no active session to finish")
+        return
+    sid = result["session_id"]
+    summary = result["summary"]
+    from anzuelo.report import print_report
+    events = get_events(limit=50, session_id=sid)
+    print_report(summary, events, session_id=sid)
+
+
 def cmd_sessions(args):
     from anzuelo.tracker import get_sessions
     from anzuelo.report import print_sessions
@@ -330,6 +343,10 @@ def main():
     p_run = sub.add_parser("run", help="Run a command with monitoring enabled")
     p_run.add_argument("args", nargs=argparse.REMAINDER)
 
+    p_finish = sub.add_parser("finish", help="Finalize the active session and show report")
+    p_finish.add_argument("--session", type=str, default=None,
+                          help="Session ID to finish (default: last active)")
+
     p_report = sub.add_parser("report", help="Show metrics report")
     p_report.add_argument("--json", action="store_true",
                           help="Output as JSON")
@@ -380,6 +397,8 @@ def main():
         cmd_log(args)
     elif args.command == "run":
         cmd_run(args)
+    elif args.command == "finish":
+        cmd_finish(args)
     elif args.command == "report":
         cmd_report(args)
     elif args.command == "sessions":

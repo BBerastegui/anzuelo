@@ -13,7 +13,8 @@ __anzuelo_preexec() {
 
 __anzuelo_precmd() {
     local exit_code=$?
-    if [[ -n "$__anzuelo_last_cmd" && "$__anzuelo_last_cmd" != \ * && "$__anzuelo_last_cmd" != anzuelo* ]]; then
+    local last_cmd="$__anzuelo_last_cmd"
+    if [[ -n "$last_cmd" && "$last_cmd" != \ * && "$last_cmd" != anzuelo* ]]; then
         local duration=0
         if [[ -n "$__anzuelo_start_time" && "$__anzuelo_start_time" != "0" ]]; then
             local end_time=$(date +%s%N 2>/dev/null)
@@ -21,7 +22,11 @@ __anzuelo_precmd() {
                 duration=$(( (end_time - __anzuelo_start_time) / 1000000 ))
             fi
         fi
-        anzuelo log cmd "$__anzuelo_last_cmd" "$exit_code" "$duration" 2>/dev/null || true
+        anzuelo log cmd "$last_cmd" "$exit_code" "$duration" 2>/dev/null || true
+        local tool="${last_cmd%% *}"
+        case "$tool" in
+            claude|opencode|codex|agy) anzuelo finish 2>/dev/null || true ;;
+        esac
     fi
     __anzuelo_last_cmd=""
     __anzuelo_start_time=""
@@ -44,10 +49,15 @@ __anzuelo_preexec() {
 
 __anzuelo_precmd() {
     local exit_code=$?
-    if [[ -n "$__anzuelo_last_cmd" && "$__anzuelo_last_cmd" != anzuelo* ]]; then
+    local last_cmd="$__anzuelo_last_cmd"
+    if [[ -n "$last_cmd" && "$last_cmd" != anzuelo* ]]; then
         local end_time=$EPOCHREALTIME
         local duration=$(( (${end_time/.} - ${__anzuelo_start_time/.}) / 1000 ))
-        anzuelo log cmd "$__anzuelo_last_cmd" "$exit_code" "$duration" 2>/dev/null || true
+        anzuelo log cmd "$last_cmd" "$exit_code" "$duration" 2>/dev/null || true
+        local tool="${last_cmd%% *}"
+        case "$tool" in
+            claude|opencode|codex|agy) anzuelo finish 2>/dev/null || true ;;
+        esac
     fi
     __anzuelo_last_cmd=""
     __anzuelo_start_time=""

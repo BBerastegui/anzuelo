@@ -1,5 +1,11 @@
 # anzuelo — Agent Instructions
 
+## Auto-Report on Session End
+
+When an AI coding assistant (`claude`, `opencode`, `codex`, `agy`) exits, the shell hooks (`_BASH_HOOK`/`_ZSH_HOOK`) auto-detect the exit by extracting the first word of the completed command and run `anzuelo finish`.
+
+`anzuelo finish` ends the last active session (sets `end_time`) and prints the report. It accepts `--session <id>` to finish a specific session.
+
 ## Project
 Harness-agnostic lightweight metrics & monitoring for AI coding assistants.
 Install: `brew install anzuelo` or `pip install anzuelo`

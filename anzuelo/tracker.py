@@ -87,5 +87,15 @@ def get_live(after_id=0, session_id=None):
     return _get_store().get_live(after_id=after_id, session_id=session_id)
 
 
+def finish_session(session_id=None):
+    store = _get_store()
+    sid = session_id or store.find_last_active_session()
+    if sid:
+        store.end_session(sid)
+        summary = store.get_summary(session_id=sid)
+        return {"session_id": sid, "summary": summary}
+    return None
+
+
 def reset(session_id=None):
     _get_store().clear(session_id=session_id)
