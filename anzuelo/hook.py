@@ -13,8 +13,7 @@ __anzuelo_preexec() {
 
 __anzuelo_precmd() {
     local exit_code=$?
-    local last_cmd="$__anzuelo_last_cmd"
-    if [[ -n "$last_cmd" && "$last_cmd" != \ * && "$last_cmd" != anzuelo* ]]; then
+    if [[ -n "$__anzuelo_last_cmd" && "$__anzuelo_last_cmd" != \ * && "$__anzuelo_last_cmd" != anzuelo* ]]; then
         local duration=0
         if [[ -n "$__anzuelo_start_time" && "$__anzuelo_start_time" != "0" ]]; then
             local end_time=$(date +%s%N 2>/dev/null)
@@ -22,11 +21,7 @@ __anzuelo_precmd() {
                 duration=$(( (end_time - __anzuelo_start_time) / 1000000 ))
             fi
         fi
-        anzuelo log cmd "$last_cmd" "$exit_code" "$duration" 2>/dev/null || true
-        local tool="${last_cmd%% *}"
-        case "$tool" in
-            claude|opencode|codex|agy) anzuelo finish 2>/dev/null || true ;;
-        esac
+        anzuelo log cmd "$__anzuelo_last_cmd" "$exit_code" "$duration" 2>/dev/null || true
     fi
     __anzuelo_last_cmd=""
     __anzuelo_start_time=""
@@ -49,15 +44,10 @@ __anzuelo_preexec() {
 
 __anzuelo_precmd() {
     local exit_code=$?
-    local last_cmd="$__anzuelo_last_cmd"
-    if [[ -n "$last_cmd" && "$last_cmd" != anzuelo* ]]; then
+    if [[ -n "$__anzuelo_last_cmd" && "$__anzuelo_last_cmd" != anzuelo* ]]; then
         local end_time=$EPOCHREALTIME
         local duration=$(( (${end_time/.} - ${__anzuelo_start_time/.}) / 1000 ))
-        anzuelo log cmd "$last_cmd" "$exit_code" "$duration" 2>/dev/null || true
-        local tool="${last_cmd%% *}"
-        case "$tool" in
-            claude|opencode|codex|agy) anzuelo finish 2>/dev/null || true ;;
-        esac
+        anzuelo log cmd "$__anzuelo_last_cmd" "$exit_code" "$duration" 2>/dev/null || true
     fi
     __anzuelo_last_cmd=""
     __anzuelo_start_time=""
@@ -94,7 +84,7 @@ _HOOK_SCRIPT = '''#!/usr/bin/env bash
 set -euo pipefail
 INPUT=$(cat)
 
-python3 - "$INPUT" <<'PYEOF'
+META=$(python3 - "$INPUT" <<'PYEOF'
 import json, os, subprocess, sys
 
 try:
@@ -145,10 +135,33 @@ try:
         if session_id:
             base.extend(["--session-id", session_id])
         subprocess.run(base, capture_output=True, timeout=5)
+    # Print metadata for the bash wrapper: session_id|event_name
+    sys.stdout.write(f"{session_id}|{event_name}")
 except Exception:
-    pass
+    sys.stdout.write("|")
 PYEOF
+)
+
+SESSION_ID="${META%%|*}"
+EVENT_NAME="${META##*|}"
+
+# Kill any previous finish timer for this session
+if [ -n "$SESSION_ID" ]; then
+    _pidfile="/tmp/anzuelo-finish-${SESSION_ID}.pid"
+    if [ -f "$_pidfile" ]; then
+        _oldpid=$(cat "$_pidfile" 2>/dev/null || true)
+        [ -n "$_oldpid" ] && kill "$_oldpid" 2>/dev/null || true
+        rm -f "$_pidfile"
+    fi
+fi
+
 echo "$INPUT"
+
+# After PostToolUse, start a 60s finish timer (resets on every event)
+if [ "$EVENT_NAME" = "PostToolUse" ] && [ -n "$SESSION_ID" ]; then
+    (sleep 60 && anzuelo finish --session "$SESSION_ID") &
+    echo $! > "/tmp/anzuelo-finish-${SESSION_ID}.pid"
+fi
 '''
 
 
