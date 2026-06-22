@@ -9,6 +9,7 @@ description = "Harness-agnostic lightweight metrics and monitoring for AI coding
 license = { text = "MIT" }
 authors = [{ name = "Anzuelo Contributors" }]
 requires-python = ">=3.7"
+dependencies = ["rich>=13"]
 
 [project.scripts]
 anzuelo = "anzuelo.cli:main"

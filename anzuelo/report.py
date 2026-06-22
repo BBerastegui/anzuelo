@@ -1,114 +1,29 @@
 import math
 import os
-import shutil
 import time
+from datetime import datetime
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.table import Table
+from rich.text import Text
 
-BOLD = "\033[1m"
-DIM = "\033[2m"
-RESET = "\033[0m"
-
-RED = "\033[31m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-BLUE = "\033[34m"
-MAGENTA = "\033[35m"
-CYAN = "\033[36m"
-WHITE = "\033[37m"
-GRAY = "\033[90m"
-ORANGE = "\033[38;5;208m"
-
-BRIGHT_RED = "\033[91m"
-BRIGHT_GREEN = "\033[92m"
-BRIGHT_YELLOW = "\033[93m"
-BRIGHT_BLUE = "\033[94m"
-BRIGHT_MAGENTA = "\033[95m"
-BRIGHT_CYAN = "\033[96m"
-BRIGHT_WHITE = "\033[97m"
-
-TOOL_COLORS = {
-    "Bash": GREEN,
-    "Read": BLUE,
-    "Write": YELLOW,
-    "Edit": MAGENTA,
-    "Glob": CYAN,
-    "Grep": BRIGHT_MAGENTA,
-    "ToolUse": WHITE,
-    "unknown": GRAY,
-}
-
-EVENT_ICONS = {
-    "cmd": ("$", GREEN),
-    "api": ("~", CYAN),
-    "tool": (">", YELLOW),
-    "result": ("·", GRAY),
-}
-
-
-def _term_width():
-    return shutil.get_terminal_size((80, 20)).columns
+_CONSOLE = Console()
 
 
 def _fmt_size(n):
     if n >= 1_000_000:
-        return f"{n/1_000_000:.1f}MB"
+        return f"{n / 1_000_000:.1f}MB"
     if n >= 1_000:
-        return f"{n/1_000:.1f}KB"
+        return f"{n / 1_000:.1f}KB"
     return f"{n}B"
 
 
 def _fmt_tokens(n):
     if n >= 1_000:
-        return f"{n/1_000:.1f}k"
+        return f"{n / 1_000:.1f}k"
     return str(n)
-
-
-def _bar(value, max_value, width):
-    if max_value <= 0:
-        return "░" * width
-    filled = int((value / max_value) * width)
-    filled = min(filled, width)
-    return "█" * filled + "░" * (width - filled)
-
-
-def _color_bar(value, max_value, width, color):
-    if max_value <= 0:
-        return f"{DIM}{'░' * width}{RESET}"
-    filled = int((value / max_value) * width)
-    filled = min(filled, width)
-    bar_str = "█" * filled + "░" * (width - filled)
-    return f"{color}{bar_str}{RESET}"
-
-
-def _color(text, color_code):
-    return f"{color_code}{text}{RESET}"
-
-
-def _rule(title="", char="─"):
-    w = _term_width()
-    if title:
-        avail = w - len(title) - 4
-        if avail < 4:
-            return _color(f"── {title} ──", DIM)
-        left = avail // 2
-        right = avail - left
-        return _color(f"{char * left} {title} {char * right}", DIM)
-    return _color(char * w, DIM)
-
-
-def print_report(summary, events, session_id=None):
-    w = _term_width()
-    inner = w - 4
-
-    _print_header(w, session_id)
-    print()
-    _print_summary(summary, inner)
-    print()
-    _print_tools(summary, inner)
-    _print_commands(summary, inner)
-    _print_models(summary, inner)
-    _print_events(events, inner)
-    _print_footer(w)
 
 
 def _detected_companions():
@@ -127,114 +42,158 @@ def _companion_prefixes():
     return _COMPANION_PREFIXES
 
 
-def _print_header(w, session_id=None):
+TOOL_STYLES = {
+    "Bash": "green",
+    "Read": "blue",
+    "Write": "yellow",
+    "Edit": "magenta",
+    "Glob": "cyan",
+    "Grep": "bright_magenta",
+    "ToolUse": "white",
+    "unknown": "grey",
+}
+
+EVENT_STYLES = {
+    "cmd": ("$", "green"),
+    "api": ("~", "cyan"),
+    "tool": (">", "yellow"),
+    "result": ("·", "grey"),
+}
+
+
+def print_report(summary, events, session_id=None):
+    _print_header(session_id)
+    _CONSOLE.print()
+    _print_summary(summary)
+    _CONSOLE.print()
+    _print_tools(summary)
+    _print_commands(summary)
+    _print_models(summary)
+    _print_events(events)
+    _print_footer()
+
+
+def _print_header(session_id=None):
     companions = _detected_companions()
-    title = " anzuelo  metrics "
+    text = Text(justify="center")
+    title = "anzuelo metrics"
     if session_id:
-        short = session_id[:8]
-        title = f" anzuelo  session {short} "
+        title = f"anzuelo session {session_id[:8]}"
+    text.append(title, style="bold bright_white")
     if companions:
-        labels = [f"{ORANGE}{label}{RESET}" for _, label in companions]
-        title += f"({', '.join(labels)} {ORANGE}enabled{RESET})"
-    bar = "─" * (w - 2)
-    print(f"  {BOLD}{BRIGHT_CYAN}╭{bar}╮{RESET}")
-    pad = (w - len(title) - 2) // 2
-    print(f"  {BRIGHT_CYAN}│{RESET}{' ' * pad}{BOLD}{BRIGHT_WHITE}{title}{RESET}"
-          f"{' ' * (w - 2 - pad - len(title))}{BRIGHT_CYAN}│{RESET}")
-    print(f"  {BRIGHT_CYAN}╰{bar}╯{RESET}")
+        text.append(" (")
+        for i, (_, label) in enumerate(companions):
+            if i > 0:
+                text.append(", ")
+            text.append(label, style="orange3")
+        text.append(" enabled)", style="orange3")
+    _CONSOLE.print(Panel(text, border_style="bright_cyan", padding=0))
 
 
-def _print_footer(w):
-    print(f"  {DIM}{'─' * (w - 2)}{RESET}")
-    hint = "anzuelo report --help"
-    print(f"  {DIM}{hint:>{w - 4}}{RESET}")
-    print()
+def _print_footer():
+    _CONSOLE.print(Rule(style="dim"))
+    _CONSOLE.print("[dim]anzuelo report --help[/]", justify="right")
+    _CONSOLE.print()
 
 
-def _print_summary(s, inner):
-    bar_w = min(inner - 24, 20)
+def _print_summary(s):
+    w = _CONSOLE.width
+    bar_w = min(w - 28, 20)
 
     total = s["total_events"]
     cmds = s["commands"]
     apis = s["api_calls"]
     tools = s["tool_calls"]
 
-    print(f"  {BOLD}Summary{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    _CONSOLE.print("[bold]Summary[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
     max_count = max(cmds, apis, tools, 1)
 
     if total > 0:
-        cmp_bar = ""
+        cmp_bar = Text()
         if cmds:
             f = int((cmds / max_count) * bar_w)
-            cmp_bar += f"{GREEN}{'█' * f}{RESET}"
+            cmp_bar.append("█" * f, style="green")
         if apis:
             f = int((apis / max_count) * bar_w)
-            cmp_bar += f"{CYAN}{'█' * f}{RESET}"
+            cmp_bar.append("█" * f, style="cyan")
         if tools:
             f = int((tools / max_count) * bar_w)
-            cmp_bar += f"{YELLOW}{'█' * f}{RESET}"
-        pad = bar_w - (int(cmds / max_count * bar_w) if cmds else 0) - (int(apis / max_count * bar_w) if apis else 0) - (int(tools / max_count * bar_w) if tools else 0)
-        cmp_bar += "░" * max(pad, 0)
+            cmp_bar.append("█" * f, style="yellow")
+        pad = bar_w - len(cmp_bar.plain)
+        cmp_bar.append("░" * max(pad, 0), style="dim")
 
-        p_cmds = f"{cmds/total*100:.0f}%" if total else "0%"
-        p_apis = f"{apis/total*100:.0f}%" if total else "0%"
-        p_tools = f"{tools/total*100:.0f}%" if total else "0%"
-
-        print(f"  {DIM}composition{RESET}  {cmp_bar}")
-        print(f"  {GREEN}●{RESET} {cmds} commands    "
-              f"{CYAN}●{RESET} {apis} api calls    "
-              f"{YELLOW}●{RESET} {tools} tool calls")
-        print()
+        _CONSOLE.print(f"  [dim]composition[/]  {cmp_bar}")
+        _CONSOLE.print(
+            f"  [green]●[/] {cmds} commands    "
+            f"[cyan]●[/] {apis} api calls    "
+            f"[yellow]●[/] {tools} tool calls"
+        )
+        _CONSOLE.print()
 
     tokens = s["total_tokens"]
     output = s["total_output_chars"]
-    print(f"  {DIM}total tokens{RESET}     {BOLD}{_fmt_tokens(tokens)}{RESET}"
-          f"{' ' * max(0, inner - 20 - len(str(tokens)))}"
-          f"{DIM}total events{RESET}  {BOLD}{total}{RESET}")
-    print(f"  {DIM}total output{RESET}     {BOLD}{_fmt_size(output)}{RESET}"
-          f"{' ' * max(0, inner - 20 - len(_fmt_size(output)))}"
-          f"{DIM}tokens/event{RESET}  {BOLD}{_fmt_tokens(tokens // total if total else 0)}{RESET}")
-    print()
+
+    _CONSOLE.print(
+        f"  [dim]total tokens[/]     [bold]{_fmt_tokens(tokens):>6}[/]"
+        f"  [dim]total events[/]  [bold]{total}[/]"
+    )
+    _CONSOLE.print(
+        f"  [dim]total output[/]     [bold]{_fmt_size(output):>6}[/]"
+        f"  [dim]tokens/event[/]  [bold]{_fmt_tokens(tokens // total if total else 0)}[/]"
+    )
+    _CONSOLE.print()
 
 
-def _print_tools(s, inner):
-    tools = s.get("top_tools", [])
-    if not tools:
+def _print_tools(s, inner=None):
+    tools_list = s.get("top_tools", [])
+    if not tools_list:
         return
 
-    bar_w = min(inner - 30, 25)
-    max_output = max(t["total_output"] for t in tools) if tools else 1
+    w = _CONSOLE.width
+    bar_w = min(w - 34, 25)
+    max_output = max(t["total_output"] for t in tools_list) if tools_list else 1
 
-    print(f"  {BOLD}Top Tools{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    _CONSOLE.print("[bold]Top Tools[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
-    for t in tools:
+    for t in tools_list:
         name = t["name"]
         count = t["count"]
         out = t["total_output"]
         pct = out / max_output * 100 if max_output else 0
-        color = TOOL_COLORS.get(name, WHITE)
-        bar = _color_bar(out, max_output, bar_w, color)
-        label = f"{color}{name:<8}{RESET}"
-        size = _fmt_size(out)
-        print(f"  {label} {bar}  {BOLD}{size:>7}{RESET}  {DIM}{pct:3.0f}%{RESET}"
-              f"  ({count} calls)")
-    print()
+        style = TOOL_STYLES.get(name, "white")
+
+        bar = Text()
+        if max_output > 0:
+            filled = int((out / max_output) * bar_w)
+            filled = min(filled, bar_w)
+            bar.append("█" * filled, style=style)
+            bar.append("░" * (bar_w - filled), style="dim")
+        else:
+            bar.append("░" * bar_w, style="dim")
+
+        size_str = _fmt_size(out)
+        _CONSOLE.print(
+            f"  [{style}]{name:<8}[/] {bar}  "
+            f"[bold]{size_str:>7}[/]  [dim]{pct:3.0f}%[/]  ({count} calls)"
+        )
+    _CONSOLE.print()
 
 
-def _print_commands(s, inner):
+def _print_commands(s, inner=None):
     cmds = s.get("top_commands", [])
     if not cmds:
         return
 
-    bar_w = min(inner - 30, 20)
+    w = _CONSOLE.width
+    bar_w = min(w - 34, 20)
     max_count = max(c["count"] for c in cmds) if cmds else 1
     companions = _companion_prefixes()
 
-    print(f"  {BOLD}Top Commands{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    _CONSOLE.print("[bold]Top Commands[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
     for c in cmds:
         name = c["name"]
@@ -244,79 +203,91 @@ def _print_commands(s, inner):
 
         prefix = next((p for p in companions if name.startswith(p + " ")), None)
         if prefix:
-            display = f"{name[len(prefix)+1:]} \U0001fa9d"
-            color = ORANGE
-            bar_color = ORANGE
+            display = f"{name[len(prefix) + 1:]} \U0001fa9d"
+            style = "orange3"
+            bar_style = "orange3"
         else:
             display = name
-            color = GREEN
-            bar_color = BRIGHT_GREEN
+            style = "green"
+            bar_style = "bright_green"
 
-        bar = _color_bar(cnt, max_count, bar_w, bar_color)
+        bar = Text()
+        if max_count > 0:
+            filled = int((cnt / max_count) * bar_w)
+            filled = min(filled, bar_w)
+            bar.append("█" * filled, style=bar_style)
+            bar.append("░" * (bar_w - filled), style="dim")
+        else:
+            bar.append("░" * bar_w, style="dim")
+
         tok_str = _fmt_tokens(tok) if tok else ""
-        print(f"  {color}{display:<14}{RESET} {bar}  {BOLD}{cnt:>3}x{RESET}"
-              f"  {DIM}{pct:3.0f}%{RESET}"
-              f"  {DIM}{tok_str:>7}{RESET}")
-    print()
+        _CONSOLE.print(
+            f"  [{style}]{display:<14}[/] {bar}  "
+            f"[bold]{cnt:>3}x[/]  [dim]{pct:3.0f}%[/]  [dim]{tok_str:>7}[/]"
+        )
+    _CONSOLE.print()
 
 
-def _print_models(s, inner):
+def _print_models(s, inner=None):
     models = s.get("models", [])
     if not models:
         return
 
-    print(f"  {BOLD}Models{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    _CONSOLE.print("[bold]Models[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
     for m in models:
         model = m["model"]
         cnt = m["count"]
         tin = m["tokens_in"]
         tout = m["tokens_out"]
-        print(f"  {CYAN}{model:<30}{RESET} {BOLD}{cnt}{RESET} calls")
-        print(f"  {' ' * 30}  {DIM}{_fmt_tokens(tin)} in{RESET}"
-              f"  {DIM}{_fmt_tokens(tout)} out{RESET}"
-              f"  {DIM}{_fmt_tokens(tin + tout)} total{RESET}")
-    print()
+        _CONSOLE.print(f"  [cyan]{model:<30}[/] [bold]{cnt}[/] calls")
+        _CONSOLE.print(
+            f"  {' ' * 30}  "
+            f"[dim]{_fmt_tokens(tin)} in[/]  [dim]{_fmt_tokens(tout)} out[/]  "
+            f"[dim]{_fmt_tokens(tin + tout)} total[/]"
+        )
+    _CONSOLE.print()
 
 
-def _print_events(events, inner):
+def _print_events(events, inner=None):
     if not events:
         return
 
-    print(f"  {BOLD}Timeline{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    w = _CONSOLE.width
+    _CONSOLE.print("[bold]Timeline[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
-    show_count = min(len(events), max(8, (_term_width() - 40) // 3))
+    show_count = min(len(events), max(8, (w - 40) // 3))
     show_count = min(show_count, len(events))
 
     for e in reversed(events[:show_count]):
         ts = e["timestamp"][11:19] if e["timestamp"] else ""
         etype = e["type"]
-        icon, color = EVENT_ICONS.get(etype, ("?", GRAY))
+        icon, color = EVENT_STYLES.get(etype, ("?", "grey"))
 
-        name = (e.get("detail") or e["name"])[:inner - 25]
+        name = (e.get("detail") or e["name"])[:w - 25]
 
-        extra = ""
+        extra_parts = []
         if e["output_size"]:
-            extra = f" {DIM}{_fmt_size(e['output_size'])}{RESET}"
+            extra_parts.append(f"[dim]{_fmt_size(e['output_size'])}[/]")
         if e["tokens_input"] is not None or e["tokens_output"] is not None:
             tin = e["tokens_input"] or "?"
             tout = e["tokens_output"] or "?"
-            extra = f" {DIM}[{tin}→{tout}t]{RESET}"
+            extra_parts.append(f"[dim][{tin}\u2192{tout}t][/]")
         if e["duration_ms"] is not None and e["duration_ms"] > 0:
             dur = e["duration_ms"]
             if dur >= 1000:
-                extra += f" {DIM}({dur/1000:.1f}s){RESET}"
+                extra_parts.append(f"[dim]({dur / 1000:.1f}s)[/]")
             else:
-                extra += f" {DIM}({dur}ms){RESET}"
+                extra_parts.append(f"[dim]({dur}ms)[/]")
 
-        print(f"  {DIM}{ts}{RESET} {color}{icon}{RESET} {name}{extra}")
+        extra = " ".join(extra_parts)
+        _CONSOLE.print(f"  [dim]{ts}[/] [{color}]{icon}[/] {name} {extra}")
 
 
 def print_live(events, summary=None):
-    w = _term_width()
-    inner = w - 4
+    w = _CONSOLE.width
 
     if summary:
         cmds = summary["commands"]
@@ -329,73 +300,73 @@ def print_live(events, summary=None):
         tool_breakdown = ""
         top_tools = summary.get("top_tools", [])
         if top_tools:
-            parts = [f"{GREEN}{t['name']} {t['count']}{RESET}"
-                     for t in top_tools[:4]]
-            tool_breakdown = f"  {' '.join(parts)}"
+            parts = [f"[green]{t['name']} {t['count']}[/]" for t in top_tools[:4]]
+            tool_breakdown = "  " + " ".join(parts)
 
-        print(f"  {BOLD}{BRIGHT_CYAN}anzuelo live{RESET}  "
-              f"{DIM}{total} events{RESET}"
-              f"  {GREEN}{cmds} cmd{RESET}"
-              f"  {YELLOW}{tools} tool{RESET}"
-              f"  {CYAN}{apis} api{RESET}"
-              f"  {DIM}{_fmt_size(output)} out{RESET}"
-              f"  {BOLD}{_fmt_tokens(tokens)} tok{RESET}", flush=True)
+        _CONSOLE.print(
+            f"  [bold bright_cyan]anzuelo live[/]  "
+            f"[dim]{total} events[/]"
+            f"  [green]{cmds} cmd[/]"
+            f"  [yellow]{tools} tool[/]"
+            f"  [cyan]{apis} api[/]"
+            f"  [dim]{_fmt_size(output)} out[/]"
+            f"  [bold]{_fmt_tokens(tokens)} tok[/]"
+        )
         if tool_breakdown:
-            print(f"  {tool_breakdown}", flush=True)
-        print(f"  {DIM}{'─' * inner}{RESET}", flush=True)
+            _CONSOLE.print(f" {tool_breakdown}")
+        _CONSOLE.print(Rule(style="dim"))
 
     for e in events:
         ts = e["timestamp"][11:19] if e["timestamp"] else ""
         etype = e["type"]
-        icon, color = EVENT_ICONS.get(etype, ("?", GRAY))
-        name = (e.get("detail") or e["name"])[:inner - 25]
+        icon, color = EVENT_STYLES.get(etype, ("?", "grey"))
+        name = (e.get("detail") or e["name"])[:w - 25]
 
-        extra = ""
+        extra_parts = []
         if e["output_size"]:
-            extra = f" {DIM}{_fmt_size(e['output_size'])}{RESET}"
+            extra_parts.append(f"[dim]{_fmt_size(e['output_size'])}[/]")
         if e["tokens_input"] is not None or e["tokens_output"] is not None:
             tin = e["tokens_input"] or "?"
             tout = e["tokens_output"] or "?"
-            extra = f" {DIM}[{tin}→{tout}t]{RESET}"
+            extra_parts.append(f"[dim][{tin}\u2192{tout}t][/]")
         if e["duration_ms"] is not None and e["duration_ms"] > 0:
             dur = e["duration_ms"]
             if dur >= 1000:
-                extra += f" {DIM}({dur/1000:.1f}s){RESET}"
+                extra_parts.append(f"[dim]({dur / 1000:.1f}s)[/]")
             else:
-                extra += f" {DIM}({dur}ms){RESET}"
+                extra_parts.append(f"[dim]({dur}ms)[/]")
 
-        print(f"  {DIM}{ts}{RESET} {color}{icon}{RESET} {name}{extra}", flush=True)
+        extra = " ".join(extra_parts)
+        _CONSOLE.print(f"  [dim]{ts}[/] [{color}]{icon}[/] {name} {extra}")
 
 
 def print_sessions(sessions):
     if not sessions:
-        print(f"  {DIM}No sessions tracked yet{RESET}")
+        _CONSOLE.print("[dim]No sessions tracked yet[/]")
         return
 
-    w = _term_width()
-    inner = w - 4
-
-    print(f"  {BOLD}Sessions{RESET}")
-    print(f"  {DIM}{'─' * inner}{RESET}")
+    _CONSOLE.print("[bold]Sessions[/]")
+    _CONSOLE.print(Rule(style="dim"))
 
     for s in sessions:
         sid = s["id"][:8]
         start = s["start_time"][:19] if s["start_time"] else "?"
         end = s["end_time"]
         count = s["event_count"]
-        status = f"{GREEN}active{RESET}" if end is None else f"{DIM}ended{RESET}"
+        status = "[green]active[/]" if end is None else "[dim]ended[/]"
 
         duration = ""
         if start and end:
             try:
-                from datetime import datetime
                 s_t = datetime.fromisoformat(start)
                 e_t = datetime.fromisoformat(end)
                 mins = int((e_t - s_t).total_seconds() // 60)
-                duration = f" {DIM}({mins}m){RESET}"
+                duration = f" [dim]({mins}m)[/]"
             except Exception:
                 pass
 
-        print(f"  {BRIGHT_CYAN}{sid}{RESET}  {DIM}{start}{RESET}{duration}"
-              f"  {BOLD}{count}{RESET} events  {status}")
-    print()
+        _CONSOLE.print(
+            f"  [bright_cyan]{sid}[/]  [dim]{start}[/]{duration}"
+            f"  [bold]{count}[/] events  {status}"
+        )
+    _CONSOLE.print()

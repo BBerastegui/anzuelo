@@ -116,7 +116,7 @@ This replaces the old `monitor.py` HTTP monkey-patching approach.
 - **Bash in PostToolUse**: uses `tool_response.stdout`, NOT `tool_result` (that key is never present)
 - **Read in PostToolUse**: uses `tool_response.file.content`
 - **Session auto-creation**: `log_event()` calls `ensure_session()` when session_id provided; session row created on first event per session_id
-- **Python 3.7+ stdlib only**: no external dependencies
+- **Python 3.7+ with Rich**: terminal UI uses [Rich](https://github.com/Textualize/rich) for cross-platform rendering; no other external dependencies
 
 ## Testing
 
