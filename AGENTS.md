@@ -2,11 +2,9 @@
 
 ## Auto-Report on Session End
 
-When an AI coding assistant session ends (no tool events for 60 seconds), the harness hook script (`anzuelo-hook.sh`) auto-detects the inactivity and runs `anzuelo finish`.
+When an AI coding assistant session ends (user exits `claude`, `opencode`, `codex`, or `agy`), the shell hooks (`_BASH_HOOK`/`_ZSH_HOOK`) detect the exit and run `anzuelo finish`.
 
-The mechanism: on every PostToolUse event, the hook script starts a background `(sleep 60 && anzuelo finish --session <id>) &` and writes the PID to `/tmp/anzuelo-finish-<session>.pid`. The next event kills the previous timer and starts a fresh 60s countdown. When no events arrive for 60 seconds, the timer fires and `anzuelo finish` runs.
-
-This is scoped entirely to the harness hook — no shell-wide command filtering needed.
+The mechanism: on every `__anzuelo_precmd` invocation (which already fires after every shell command), the hook extracts the first word of the just-completed command. If it matches a known AI tool, it calls `anzuelo finish`. This is 3 extra lines in an existing hook — no new shell-wide filtering, no background processes, no timers.
 
 `anzuelo finish` ends the last active session (sets `end_time`) and prints the report. It accepts `--session <id>` to finish a specific session.
 
