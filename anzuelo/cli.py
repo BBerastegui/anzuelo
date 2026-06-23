@@ -116,6 +116,10 @@ def cmd_run(args):
         print("error: no command specified", file=sys.stderr)
         sys.exit(1)
 
+    if args.scrub:
+        from anzuelo.monitor import enable_scrub
+        enable_scrub()
+
     cmd = cmd_args[0]
     rest = cmd_args[1:]
 
@@ -341,6 +345,8 @@ def main():
                        help="Session ID (provided by Claude Code hooks)")
 
     p_run = sub.add_parser("run", help="Run a command with monitoring enabled")
+    p_run.add_argument("--scrub", action="store_true",
+                       help="Scrub PII and secrets from AI API requests")
     p_run.add_argument("args", nargs=argparse.REMAINDER)
 
     p_finish = sub.add_parser("finish", help="Finalize the active session and show report")

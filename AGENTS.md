@@ -27,7 +27,8 @@ Harness hook event (JSON on stdin) → anzuelo-hook.sh → anzuelo log → SQLit
 | `anzuelo/store.py` | SQLite layer: `events` + `sessions` tables, WAL mode, busy_timeout=5000 |
 | `anzuelo/tracker.py` | High-level event recording wrappers around store |
 | `anzuelo/report.py` | Terminal UI: bordered headers, bar charts, timeline |
-| `anzuelo/monitor.py` | Monkey-patches `requests.Session.send` + `httpx.Client.send` for token extraction |
+| `anzuelo/scrub.py` | Secret/PII scrubbing: combines detect-secrets + scrubadub for in-flight redaction |
+| `anzuelo/monitor.py` | Monkey-patches `requests.Session.send` + `httpx.Client.send` for request/response scrubbing |
 | `install.sh` | One-liner installer (curl pipe), calls `anzuelo init --all` |
 | `Formula/anzuelo.rb` | Homebrew formula |
 | `AGENTS.md` | This file |
