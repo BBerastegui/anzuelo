@@ -13,7 +13,7 @@
 
 ---
 
-> *Harness-agnostic, zero-config, stdlib-only metrics & monitoring for AI coding assistants.*
+> *Harness-agnostic, zero-config metrics & monitoring for AI coding assistants.*
 
 </div>
 
@@ -74,11 +74,11 @@ Timeline
 - **📈 Beautiful terminal UI** — Color-coded composition bars, tool breakdowns, and live timeline
 - **⏱️ Per-tool timing** — See exactly how long each tool call takes (Read, Write, Bash, Edit, etc.)
 - **📏 Output tracking** — Measure how much data each tool produces
-- **🔑 Token monitoring** — Track LLM token usage by monkey-patching `requests` and `httpx`
+- **🔒 PII & secret scrubbing** — `anzuelo run --scrub` monitors AI API calls and redacts emails, API keys, tokens, SSNs, phone numbers, and 20+ secret types before they leave your machine. Placeholder values are restored on the response so the AI never sees your sensitive data.
 - **📂 Per-session tracking** — Every Claude/Codex session is isolated and queryable
 - **👁️ Live mode** — `anzuelo report --live` for real-time monitoring
 - **🧹 Clean uninstall** — `anzuelo uninstall --all --global --data` removes everything
-- **📦 Zero external dependencies** — Pure Python stdlib, no pip install surprises
+- **🎨 Rich terminal UI** — Cross-platform rendering via the [Rich](https://github.com/Textualize/rich) library
 
 ## 🎯 Supported Harnesses
 
@@ -150,6 +150,12 @@ anzuelo report --session <id>       # Metrics for one session
 anzuelo reset --session <id>        # Clear one session
 ```
 
+### Secret & PII scrubbing
+```sh
+anzuelo run --scrub -- python3 your_script.py
+```
+Intercepts all AI API calls (`api.openai.com`, `api.anthropic.com`, etc.) and scrubs the request body in-flight using **detect-secrets** (API keys, tokens, JWTs, private keys) and **scrubadub** (emails, phone numbers, SSNs, credit cards). Placeholders like `[SCRUBBED_EMAIL_1]` are sent to the backend instead of the real data, then restored transparently on the response.
+
 ### API token tracking
 ```sh
 anzuelo run -- python3 your_script.py
@@ -178,7 +184,8 @@ Harness hook event (JSON) → anzuelo-hook.sh → anzuelo log → SQLite → rep
 
 1. **Hooks** — Every supported AI coding harness fires `PreToolUse`/`PostToolUse` events. anzuelo registers lightweight hook scripts that intercept these events.
 2. **Logging** — Each event is serialized to a local SQLite database (`~/.local/share/anzuelo/metrics.db`) using WAL mode for concurrent access.
-3. **Reporting** — `anzuelo report` queries the database and renders a beautiful terminal UI with composition bars, tool rankings, and a chronological timeline.
+3. **Reporting** — `anzuelo report` queries the database and renders a terminal UI with composition bars, tool rankings, and a chronological timeline.
+4. **Scrubbing** — When `--scrub` is enabled, `anzuelo run` monkey-patches `requests.Session.send` and `httpx.Client.send` to intercept AI API calls, redact sensitive data using detect-secrets + scrubadub, and restore placeholders on the response — all transparently.
 
 ## ⚡ CLI Reference
 
@@ -186,7 +193,7 @@ Harness hook event (JSON) → anzuelo-hook.sh → anzuelo log → SQLite → rep
 |---------|-------------|
 | `init` | Generate shell hook script or install harness hooks |
 | `log` | Log an event (used internally by hooks) |
-| `run` | Run a command with monitoring and API token tracking |
+| `run` | Run a command with monitoring and optional `--scrub` for PII/secret redaction |
 | `report` | Show metrics report (supports `--json`, `--live`, `--session`) |
 | `sessions` | List tracked sessions |
 | `status` | Check if anzuelo is active |
